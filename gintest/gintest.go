@@ -106,7 +106,6 @@ func (t *Test) Run() error {
 			router: t.router,
 			header: t.header,
 		}
-
 		err := value(mock)
 		if err != nil {
 			return err
@@ -128,12 +127,16 @@ func (m *Mock) Exec(options ...Option) []byte {
 	for _, option := range options {
 		option(m)
 	}
+	uri := m.uri
+	if m.query != "" {
+		uri = uri + "?" + m.query
+	}
 	var req *http.Request
 	if len(m.jsonBody) != 0 {
 		reader := bytes.NewReader(m.jsonBody)
-		req = httptest.NewRequest(m.method, m.uri+m.query, reader)
+		req = httptest.NewRequest(m.method, uri, reader)
 	} else {
-		req = httptest.NewRequest(m.method, m.uri+m.query, nil)
+		req = httptest.NewRequest(m.method, uri, nil)
 	}
 
 	for key, value := range m.header {
