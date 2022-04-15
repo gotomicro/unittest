@@ -1,4 +1,4 @@
-module github.com/gotomciro/unittest
+module github.com/gotomicro/unittest
 
 go 1.17
 
