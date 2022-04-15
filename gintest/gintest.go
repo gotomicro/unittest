@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 
@@ -127,12 +128,13 @@ func (m *Mock) Exec(options ...Option) []byte {
 	for _, option := range options {
 		option(m)
 	}
-	var reader *bytes.Reader
+	var req *http.Request
 	if len(m.jsonBody) != 0 {
-		reader = bytes.NewReader(m.jsonBody)
+		reader := bytes.NewReader(m.jsonBody)
+		req = httptest.NewRequest(m.method, m.uri+m.query, reader)
+	} else {
+		req = httptest.NewRequest(m.method, m.uri+m.query, nil)
 	}
-
-	req := httptest.NewRequest(m.method, m.uri+m.query, reader)
 
 	for key, value := range m.header {
 		req.Header.Set(key, value)
