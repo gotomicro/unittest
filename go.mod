@@ -1,6 +1,6 @@
-module unittest
+module github.com/gotomciro/unittest
 
-go 1.18
+go 1.17
 
 require (
 	github.com/gin-gonic/gin v1.7.7
