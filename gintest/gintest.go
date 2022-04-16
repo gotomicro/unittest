@@ -14,18 +14,21 @@ import (
 )
 
 type Test struct {
-	storeRoute map[string]routerPath
-	storeCall  []string // 排序
-	router     *gin.Engine
-	middleware []gin.HandlerFunc
-	header     map[string]string
-	tmpPath    string // 临时存储
+	storeRoute    map[string]routerPath
+	storeCall     []string // 排序
+	router        *gin.Engine
+	middleware    []gin.HandlerFunc
+	header        map[string]string
+	tmpMiddleware []gin.HandlerFunc // 临时存储，最终放到router path
+	tmpPath       string            // 临时存储，最终放到router path
 }
 
 type routerPath struct {
-	Method string
-	f      func(c *gin.Context)
-	call   func(m *Mock) error
+	Method     string
+	f          func(c *gin.Context)
+	call       func(m *Mock) error
+	middleware []gin.HandlerFunc
+	path       string
 }
 
 func Init(options ...TestOption) *Test {
@@ -73,11 +76,19 @@ func (t *Test) register(method string, f func(c *gin.Context), call func(m *Mock
 		// 清空数据
 		t.tmpPath = ""
 	}
-
+	var middleware []gin.HandlerFunc
+	if len(t.tmpMiddleware) != 0 {
+		middleware = t.tmpMiddleware
+		// 清空数据
+		t.tmpMiddleware = []gin.HandlerFunc{}
+	}
+	middleware = append(middleware, f)
 	t.storeRoute[path] = routerPath{
-		Method: method,
-		f:      f,
-		call:   call,
+		Method:     method,
+		f:          f,
+		call:       call,
+		path:       path,
+		middleware: middleware,
 	}
 	t.storeCall = append(t.storeCall, path)
 }
@@ -91,13 +102,13 @@ func (t *Test) Run() error {
 	for key, value := range t.storeRoute {
 		switch value.Method {
 		case "GET":
-			t.router.GET(key, value.f)
+			t.router.GET(key, value.middleware...)
 		case "POST":
-			t.router.POST(key, value.f)
+			t.router.POST(key, value.middleware...)
 		case "PUT":
-			t.router.PUT(key, value.f)
+			t.router.PUT(key, value.middleware...)
 		case "DELETE":
-			t.router.DELETE(key, value.f)
+			t.router.DELETE(key, value.middleware...)
 		}
 	}
 
@@ -188,6 +199,12 @@ func WithJsonBody(data interface{}) MockOption {
 func WithRoutePath(path string) RouteOption {
 	return func(c *Test) {
 		c.tmpPath = path
+	}
+}
+
+func WithRouteMiddleware(middleware ...gin.HandlerFunc) RouteOption {
+	return func(c *Test) {
+		c.tmpMiddleware = middleware
 	}
 }
 
