@@ -19,6 +19,7 @@ type Test struct {
 	router     *gin.Engine
 	middleware []gin.HandlerFunc
 	header     map[string]string
+	tmpPath    string // 临时存储
 }
 
 type routerPath struct {
@@ -27,41 +28,52 @@ type routerPath struct {
 	call   func(m *Mock) error
 }
 
-func Init(middleware ...gin.HandlerFunc) *Test {
+func Init(options ...TestOption) *Test {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	return &Test{
+	obj := &Test{
 		storeRoute: make(map[string]routerPath),
 		storeCall:  make([]string, 0),
 		router:     router,
-		middleware: middleware,
 		header: map[string]string{
 			"Content-Type": "application/json",
 		},
 	}
+	for _, option := range options {
+		option(obj)
+	}
+	return obj
 }
 
-func (t *Test) GET(f func(c *gin.Context), call func(m *Mock) error) {
-	t.register("GET", f, call)
+func (t *Test) GET(f func(c *gin.Context), call func(m *Mock) error, options ...RouteOption) {
+	t.register("GET", f, call, options...)
+}
+
+func (t *Test) POST(f func(c *gin.Context), call func(m *Mock) error, options ...RouteOption) {
+	t.register("POST", f, call, options...)
 
 }
 
-func (t *Test) POST(f func(c *gin.Context), call func(m *Mock) error) {
-	t.register("POST", f, call)
+func (t *Test) PUT(f func(c *gin.Context), call func(m *Mock) error, options ...RouteOption) {
+	t.register("PUT", f, call, options...)
 
 }
 
-func (t *Test) PUT(f func(c *gin.Context), call func(m *Mock) error) {
-	t.register("PUT", f, call)
-
+func (t *Test) DELETE(f func(c *gin.Context), call func(m *Mock) error, options ...RouteOption) {
+	t.register("DELETE", f, call, options...)
 }
 
-func (t *Test) DELETE(f func(c *gin.Context), call func(m *Mock) error) {
-	t.register("DELETE", f, call)
-}
-
-func (t *Test) register(method string, f func(c *gin.Context), call func(m *Mock) error) {
+func (t *Test) register(method string, f func(c *gin.Context), call func(m *Mock) error, options ...RouteOption) {
 	path := urlPath()
+	for _, option := range options {
+		option(t)
+	}
+	if t.tmpPath != "" {
+		path = t.tmpPath
+		// 清空数据
+		t.tmpPath = ""
+	}
+
 	t.storeRoute[path] = routerPath{
 		Method: method,
 		f:      f,
@@ -118,7 +130,7 @@ type Mock struct {
 	jsonBody []byte
 }
 
-func (m *Mock) Exec(options ...Option) []byte {
+func (m *Mock) Exec(options ...MockOption) []byte {
 	for _, option := range options {
 		option(m)
 	}
@@ -153,7 +165,7 @@ func (m *Mock) Exec(options ...Option) []byte {
 	return body
 }
 
-func WithQuery(data interface{}) Option {
+func WithQuery(data interface{}) MockOption {
 	return func(c *Mock) {
 		info, err := urlquery.Marshal(data)
 		if err != nil {
@@ -163,7 +175,7 @@ func WithQuery(data interface{}) Option {
 	}
 }
 
-func WithJsonBody(data interface{}) Option {
+func WithJsonBody(data interface{}) MockOption {
 	return func(c *Mock) {
 		info, err := json.Marshal(data)
 		if err != nil {
@@ -173,5 +185,19 @@ func WithJsonBody(data interface{}) Option {
 	}
 }
 
-// Option 可选项
-type Option func(c *Mock)
+func WithRoutePath(path string) RouteOption {
+	return func(c *Test) {
+		c.tmpPath = path
+	}
+}
+
+func WithTestMiddleware(middleware ...gin.HandlerFunc) TestOption {
+	return func(c *Test) {
+		c.middleware = middleware
+	}
+}
+
+// MockOption 可选项
+type MockOption func(c *Mock)
+type RouteOption func(c *Test)
+type TestOption func(c *Test)
