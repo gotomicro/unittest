@@ -16,7 +16,7 @@ func Hello(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(200, "Hello client: "+req.Name)
+	ctx.String(200, `Hello client: `+req.Name)
 }
 
 type PostHelloRequest struct {

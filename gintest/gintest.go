@@ -15,7 +15,7 @@ import (
 
 type Test struct {
 	storeRoute map[string]routerPath
-	storeCall  map[string]func(m *Mock) error
+	storeCall  []string // 排序
 	router     *gin.Engine
 	middleware []gin.HandlerFunc
 	header     map[string]string
@@ -24,13 +24,15 @@ type Test struct {
 type routerPath struct {
 	Method string
 	f      func(c *gin.Context)
+	call   func(m *Mock) error
 }
 
 func Init(middleware ...gin.HandlerFunc) *Test {
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	return &Test{
 		storeRoute: make(map[string]routerPath),
-		storeCall:  make(map[string]func(m *Mock) error),
+		storeCall:  make([]string, 0),
 		router:     router,
 		middleware: middleware,
 		header: map[string]string{
@@ -39,40 +41,33 @@ func Init(middleware ...gin.HandlerFunc) *Test {
 	}
 }
 
-func (t *Test) RegisterGet(f func(c *gin.Context), fcall func(m *Mock) error) {
-	path := urlPath()
-	t.storeRoute[path] = routerPath{
-		Method: "GET",
-		f:      f,
-	}
-	t.storeCall[path] = fcall
+func (t *Test) GET(f func(c *gin.Context), call func(m *Mock) error) {
+	t.register("GET", f, call)
+
 }
 
-func (t *Test) RegisterPost(f func(c *gin.Context), fcall func(m *Mock) error) {
-	path := urlPath()
-	t.storeRoute[path] = routerPath{
-		Method: "POST",
-		f:      f,
-	}
-	t.storeCall[path] = fcall
+func (t *Test) POST(f func(c *gin.Context), call func(m *Mock) error) {
+	t.register("POST", f, call)
+
 }
 
-func (t *Test) RegisterPut(f func(c *gin.Context), fcall func(m *Mock) error) {
-	path := urlPath()
-	t.storeRoute[path] = routerPath{
-		Method: "PUT",
-		f:      f,
-	}
-	t.storeCall[path] = fcall
+func (t *Test) PUT(f func(c *gin.Context), call func(m *Mock) error) {
+	t.register("PUT", f, call)
+
 }
 
-func (t *Test) RegisterDelete(f func(c *gin.Context), fcall func(m *Mock) error) {
+func (t *Test) DELETE(f func(c *gin.Context), call func(m *Mock) error) {
+	t.register("DELETE", f, call)
+}
+
+func (t *Test) register(method string, f func(c *gin.Context), call func(m *Mock) error) {
 	path := urlPath()
 	t.storeRoute[path] = routerPath{
-		Method: "DELETE",
+		Method: method,
 		f:      f,
+		call:   call,
 	}
-	t.storeCall[path] = fcall
+	t.storeCall = append(t.storeCall, path)
 }
 
 func urlPath() string {
@@ -94,7 +89,7 @@ func (t *Test) Run() error {
 		}
 	}
 
-	for key, value := range t.storeCall {
+	for _, key := range t.storeCall {
 		storePath, flag := t.storeRoute[key]
 		if !flag {
 			panic("url not exist")
@@ -106,7 +101,7 @@ func (t *Test) Run() error {
 			router: t.router,
 			header: t.header,
 		}
-		err := value(mock)
+		err := storePath.call(mock)
 		if err != nil {
 			return err
 		}
