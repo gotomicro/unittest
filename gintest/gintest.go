@@ -196,6 +196,12 @@ func WithJsonBody(data interface{}) MockOption {
 	}
 }
 
+func WithUri(uri string) MockOption {
+	return func(c *Mock) {
+		c.uri = uri
+	}
+}
+
 func WithRoutePath(path string) RouteOption {
 	return func(c *Test) {
 		c.tmpPath = path
