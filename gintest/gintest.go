@@ -14,13 +14,13 @@ import (
 )
 
 type Test struct {
-	storeRoute    map[string]routerPath
-	storeCall     []string // 排序
-	router        *gin.Engine
-	middleware    []gin.HandlerFunc
-	header        map[string]string
-	tmpMiddleware []gin.HandlerFunc // 临时存储，最终放到router path
-	tmpPath       string            // 临时存储，最终放到router path
+	storeRoute    map[string]map[string]routerPath // map<METHOD, map<PATH, routerPath>>
+	storeCall     []routerPath                     // 有序列表
+	router        *gin.Engine                      // router
+	middleware    []gin.HandlerFunc                // middleware
+	header        map[string]string                // 请求header
+	tmpMiddleware []gin.HandlerFunc                // 临时存储，最终放到router path
+	tmpPath       string                           // 临时存储，最终放到router path
 }
 
 type routerPath struct {
@@ -35,8 +35,8 @@ func Init(options ...TestOption) *Test {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	obj := &Test{
-		storeRoute: make(map[string]routerPath),
-		storeCall:  make([]string, 0),
+		storeRoute: make(map[string]map[string]routerPath),
+		storeCall:  make([]routerPath, 0),
 		router:     router,
 		header: map[string]string{
 			"Content-Type": "application/json",
@@ -83,14 +83,19 @@ func (t *Test) register(method string, f func(c *gin.Context), call func(m *Mock
 		t.tmpMiddleware = []gin.HandlerFunc{}
 	}
 	middleware = append(middleware, f)
-	t.storeRoute[path] = routerPath{
+	_, ok := t.storeRoute[method]
+	if !ok {
+		t.storeRoute[method] = make(map[string]routerPath)
+	}
+	rp := routerPath{
 		Method:     method,
 		f:          f,
 		call:       call,
 		path:       path,
 		middleware: middleware,
 	}
-	t.storeCall = append(t.storeCall, path)
+	t.storeRoute[method][path] = rp
+	t.storeCall = append(t.storeCall, rp)
 }
 
 func urlPath() string {
@@ -99,27 +104,33 @@ func urlPath() string {
 
 func (t *Test) Run() error {
 	t.router.Use(t.middleware...)
-	for key, value := range t.storeRoute {
-		switch value.Method {
-		case "GET":
-			t.router.GET(key, value.middleware...)
-		case "POST":
-			t.router.POST(key, value.middleware...)
-		case "PUT":
-			t.router.PUT(key, value.middleware...)
-		case "DELETE":
-			t.router.DELETE(key, value.middleware...)
+	for _, methodRoutePaths := range t.storeRoute {
+		for path, value := range methodRoutePaths {
+			switch value.Method {
+			case "GET":
+				t.router.GET(path, value.middleware...)
+			case "POST":
+				t.router.POST(path, value.middleware...)
+			case "PUT":
+				t.router.PUT(path, value.middleware...)
+			case "DELETE":
+				t.router.DELETE(path, value.middleware...)
+			}
 		}
 	}
 
 	for _, key := range t.storeCall {
-		storePath, flag := t.storeRoute[key]
+		methodRouts, ok := t.storeRoute[key.Method]
+		if !ok {
+			panic("method not exist")
+		}
+		storePath, flag := methodRouts[key.path]
 		if !flag {
-			panic("url not exist")
+			panic("path not exist")
 		}
 
 		mock := &Mock{
-			uri:    key,
+			path:   key.path,
 			method: storePath.Method,
 			router: t.router,
 			header: t.header,
@@ -133,7 +144,7 @@ func (t *Test) Run() error {
 }
 
 type Mock struct {
-	uri      string
+	path     string
 	method   string
 	router   *gin.Engine
 	header   map[string]string
@@ -145,16 +156,16 @@ func (m *Mock) Exec(options ...MockOption) []byte {
 	for _, option := range options {
 		option(m)
 	}
-	uri := m.uri
+	path := m.path
 	if m.query != "" {
-		uri = uri + "?" + m.query
+		path = path + "?" + m.query
 	}
 	var req *http.Request
 	if len(m.jsonBody) != 0 {
 		reader := bytes.NewReader(m.jsonBody)
-		req = httptest.NewRequest(m.method, uri, reader)
+		req = httptest.NewRequest(m.method, path, reader)
 	} else {
-		req = httptest.NewRequest(m.method, uri, nil)
+		req = httptest.NewRequest(m.method, path, nil)
 	}
 
 	for key, value := range m.header {
@@ -198,7 +209,7 @@ func WithJsonBody(data interface{}) MockOption {
 
 func WithUri(uri string) MockOption {
 	return func(c *Mock) {
-		c.uri = uri
+		c.path = uri
 	}
 }
 
