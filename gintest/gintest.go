@@ -3,7 +3,7 @@ package gintest
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -54,12 +54,14 @@ func (t *Test) GET(f func(c *gin.Context), call func(m *Mock) error, options ...
 
 func (t *Test) POST(f func(c *gin.Context), call func(m *Mock) error, options ...RouteOption) {
 	t.register("POST", f, call, options...)
-
 }
 
 func (t *Test) PUT(f func(c *gin.Context), call func(m *Mock) error, options ...RouteOption) {
 	t.register("PUT", f, call, options...)
+}
 
+func (t *Test) PATCH(f func(c *gin.Context), call func(m *Mock) error, options ...RouteOption) {
+	t.register("PATCH", f, call, options...)
 }
 
 func (t *Test) DELETE(f func(c *gin.Context), call func(m *Mock) error, options ...RouteOption) {
@@ -113,6 +115,8 @@ func (t *Test) Run() error {
 				t.router.POST(path, value.middleware...)
 			case "PUT":
 				t.router.PUT(path, value.middleware...)
+			case "PATCH":
+				t.router.PATCH(path, value.middleware...)
 			case "DELETE":
 				t.router.DELETE(path, value.middleware...)
 			}
@@ -160,6 +164,7 @@ func (m *Mock) Exec(options ...MockOption) []byte {
 	if m.query != "" {
 		path = path + "?" + m.query
 	}
+
 	var req *http.Request
 	if len(m.jsonBody) != 0 {
 		reader := bytes.NewReader(m.jsonBody)
@@ -183,7 +188,7 @@ func (m *Mock) Exec(options ...MockOption) []byte {
 	defer result.Body.Close()
 
 	// 读取响应body
-	body, _ := ioutil.ReadAll(result.Body)
+	body, _ := io.ReadAll(result.Body)
 	return body
 }
 
