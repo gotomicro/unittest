@@ -218,6 +218,12 @@ func WithUri(uri string) MockOption {
 	}
 }
 
+func WithHeader(key, value string) MockOption {
+	return func(c *Mock) {
+		c.header[key] = value
+	}
+}
+
 func WithRoutePath(path string) RouteOption {
 	return func(c *Test) {
 		c.tmpPath = path
