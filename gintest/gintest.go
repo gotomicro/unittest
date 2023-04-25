@@ -148,12 +148,12 @@ func (t *Test) Run() error {
 }
 
 type Mock struct {
-	path     string
-	method   string
-	router   *gin.Engine
-	header   map[string]string
-	query    string
-	jsonBody []byte
+	path   string
+	method string
+	router *gin.Engine
+	header map[string]string
+	query  string
+	body   []byte
 }
 
 func (m *Mock) Exec(options ...MockOption) []byte {
@@ -166,8 +166,8 @@ func (m *Mock) Exec(options ...MockOption) []byte {
 	}
 
 	var req *http.Request
-	if len(m.jsonBody) != 0 {
-		reader := bytes.NewReader(m.jsonBody)
+	if len(m.body) != 0 {
+		reader := bytes.NewReader(m.body)
 		req = httptest.NewRequest(m.method, path, reader)
 	} else {
 		req = httptest.NewRequest(m.method, path, nil)
@@ -208,7 +208,13 @@ func WithJsonBody(data interface{}) MockOption {
 		if err != nil {
 			panic("with json body failed,err: " + err.Error())
 		}
-		c.jsonBody = info
+		c.body = info
+	}
+}
+
+func WithBody(data []byte) MockOption {
+	return func(c *Mock) {
+		c.body = data
 	}
 }
 
