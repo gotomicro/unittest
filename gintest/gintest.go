@@ -178,7 +178,7 @@ func (m *Mock) Exec(options ...MockOption) []byte {
 	}
 
 	// 初始化响应
-	w := httptest.NewRecorder()
+	w := CreateTestResponseRecorder()
 
 	// 调用相应handler接口
 	m.router.ServeHTTP(w, req)
@@ -247,8 +247,27 @@ func WithTestMiddleware(middleware ...gin.HandlerFunc) TestOption {
 		c.middleware = middleware
 	}
 }
+func (r *TestResponseRecorder) CloseNotify() <-chan bool {
+	return r.closeChannel
+}
+
+func (r *TestResponseRecorder) closeClient() {
+	r.closeChannel <- true
+}
+
+func CreateTestResponseRecorder() *TestResponseRecorder {
+	return &TestResponseRecorder{
+		httptest.NewRecorder(),
+		make(chan bool, 1),
+	}
+}
 
 // MockOption 可选项
 type MockOption func(c *Mock)
 type RouteOption func(c *Test)
 type TestOption func(c *Test)
+
+type TestResponseRecorder struct {
+	*httptest.ResponseRecorder
+	closeChannel chan bool
+}
