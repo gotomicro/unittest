@@ -156,7 +156,8 @@ type Mock struct {
 	body   []byte
 }
 
-func (m *Mock) Exec(options ...MockOption) []byte {
+// Run 返回完整http.Response
+func (m *Mock) Run(options ...MockOption) *http.Response {
 	for _, option := range options {
 		option(m)
 	}
@@ -183,8 +184,12 @@ func (m *Mock) Exec(options ...MockOption) []byte {
 	// 调用相应handler接口
 	m.router.ServeHTTP(w, req)
 
-	// 提取响应
-	result := w.Result()
+	return w.Result()
+}
+
+// Exec 仅返回response body
+func (m *Mock) Exec(options ...MockOption) []byte {
+	result := m.Run(options...)
 	defer result.Body.Close()
 
 	// 读取响应body
@@ -192,6 +197,7 @@ func (m *Mock) Exec(options ...MockOption) []byte {
 	return body
 }
 
+// WithQuery 设置请求的query参数
 func WithQuery(data interface{}) MockOption {
 	return func(c *Mock) {
 		info, err := urlquery.Marshal(data)
@@ -202,6 +208,7 @@ func WithQuery(data interface{}) MockOption {
 	}
 }
 
+// WithJsonBody 设置请求的body，会自动转成json字符串
 func WithJsonBody(data interface{}) MockOption {
 	return func(c *Mock) {
 		info, err := json.Marshal(data)
@@ -212,41 +219,48 @@ func WithJsonBody(data interface{}) MockOption {
 	}
 }
 
+// WithBody 设置请求的body
 func WithBody(data []byte) MockOption {
 	return func(c *Mock) {
 		c.body = data
 	}
 }
 
+// WithUri 设置请求的uri
 func WithUri(uri string) MockOption {
 	return func(c *Mock) {
 		c.path = uri
 	}
 }
 
+// WithHeader 设置请求的header
 func WithHeader(key, value string) MockOption {
 	return func(c *Mock) {
 		c.header[key] = value
 	}
 }
 
+// WithRoutePath 设置请求的注册path
 func WithRoutePath(path string) RouteOption {
 	return func(c *Test) {
 		c.tmpPath = path
 	}
 }
 
+// WithRouteMiddleware 设置请求注册的中间件
 func WithRouteMiddleware(middleware ...gin.HandlerFunc) RouteOption {
 	return func(c *Test) {
 		c.tmpMiddleware = middleware
 	}
 }
 
+// WithTestMiddleware 开始调试时，用例注入的中间件
 func WithTestMiddleware(middleware ...gin.HandlerFunc) TestOption {
 	return func(c *Test) {
 		c.middleware = middleware
 	}
 }
+
 func (r *TestResponseRecorder) CloseNotify() <-chan bool {
 	return r.closeChannel
 }

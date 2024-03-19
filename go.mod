@@ -3,9 +3,11 @@ module github.com/gotomicro/unittest
 go 1.17
 
 require (
+	github.com/askuy/urlquery v1.2.8-0.20220415073902-eaf00ceabb52
 	github.com/gin-gonic/gin v1.7.7
 	github.com/google/uuid v1.3.0
 	github.com/gotomicro/ego v1.0.0
+	github.com/stretchr/testify v1.7.1
 )
 
 require (
@@ -14,7 +16,6 @@ require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/alibaba/sentinel-golang v1.0.3 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220209173558-ad29539cd2e9 // indirect
-	github.com/askuy/urlquery v1.2.8-0.20220415073902-eaf00ceabb52 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0 // indirect
@@ -48,7 +49,6 @@ require (
 	github.com/shirou/gopsutil/v3 v3.21.6 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
